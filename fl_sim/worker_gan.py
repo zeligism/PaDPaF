@@ -81,22 +81,11 @@ class TorchWorkerGAN(TorchWorker):
         self.G_optimizer = self.optimizer_init(self.model.G.parameters(), lr_mult=self.lr_mult)
 
     @torch.no_grad()
-    def resync_params(self, resync_all=False, resync_ratio=0.5):
+    def resync_params(self, resync_all=False):
         for param, global_param in zip(
                 self.model.parameters(), self.server.global_model.parameters()):
             if not self.is_private[param] or resync_all:
-                # param.copy_(global_param.detach().clone().data)
-
-                # XXX: partial resync per parameters
-                if len(param.size()) == 1:
-                    s0 = round(resync_ratio * param.size(0))
-                    param[:s0].copy_(global_param[:s0].detach().clone().data)
-                elif len(param.size()) == 2:
-                    s0, s1 = round(resync_ratio * param.size(0)), round(resync_ratio * param.size(1))
-                    param[:s0,:s1].copy_(global_param[:s0,:s1].detach().clone().data)
-                else:
-                    s0, s1 = round(resync_ratio * param.size(0)), round(resync_ratio * param.size(1))
-                    param[:s0,:s1, ...].copy_(global_param[:s0,:s1, ...].detach().clone().data)
+                param.copy_(global_param.detach().clone().data)
 
     @staticmethod
     def add_noise(tensor, std=0.02):
@@ -512,8 +501,7 @@ def initialize_worker(
 ):
     if fedgan:
         worker = TorchWorkerLinearGAN if linear else TorchWorkerFedGAN
-        # private_modules += ['styleD', 'style_map', 'style_proj']
-        private_modules += []
+        private_modules += ['styleD', 'style_map', 'style_proj']
         # XXX
         # private_modules += ['G.block1.bn1', 'G.block1.bn2',
         #                     'G.block2.bn1', 'G.block2.bn2',
